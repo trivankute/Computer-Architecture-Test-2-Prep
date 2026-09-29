@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIPS 32-bit Practice Tool</title>
+<style>
+:root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #21262d; --border: #30363d;
+    --text: #c9d1d9; --text2: #8b949e; --accent: #58a6ff; --accent2: #1f6feb;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
+    --radius: 12px; --mono: 'Consolas','Monaco','Courier New',monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+}
+#app { width:100%; max-width:880px; padding:20px; }
+nav { display:flex; gap:8px; margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:12px; }
+nav button { background:none; border:none; color:var(--text2); font-size:15px; padding:8px 16px; cursor:pointer; border-radius:8px; transition:all .2s; }
+nav button:hover { color:var(--text); background:var(--bg3); }
+nav button.active { color:var(--accent); background:var(--bg2); font-weight:600; }
+.title { text-align:center; margin-bottom:32px; }
+.title h1 { font-size:28px; color:var(--accent); margin-bottom:4px; }
+.title p { color:var(--text2); font-size:14px; }
+.card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:20px; animation:fadeIn .3s ease; }
+.card h2 { font-size:16px; color:var(--text); margin-bottom:16px; }
+.options-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px; }
+.option-item { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--bg3); border-radius:8px; cursor:pointer; transition:all .2s; border:1px solid transparent; font-size:13px; }
+.option-item:hover { border-color:var(--accent); }
+.option-item.selected { border-color:var(--accent); background:rgba(88,166,255,.1); }
+.option-item input { accent-color:var(--accent); cursor:pointer; }
+.count-grid { display:flex; gap:8px; flex-wrap:wrap; }
+.count-btn { padding:10px 24px; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text); cursor:pointer; font-size:15px; font-weight:600; transition:all .2s; }
+.count-btn:hover { border-color:var(--accent); }
+.count-btn.selected { background:var(--accent2); border-color:var(--accent); color:#fff; }
+.btn-primary { display:block; width:100%; padding:14px; background:var(--accent2); color:#fff; border:none; border-radius:var(--radius); font-size:16px; font-weight:600; cursor:pointer; transition:all .2s; margin-top:20px; }
+.btn-primary:hover { background:var(--accent); }
+.btn-secondary { padding:10px 20px; background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:8px; font-size:14px; cursor:pointer; transition:all .2s; }
+.btn-secondary:hover { border-color:var(--accent); color:var(--accent); }
+.btn-danger { padding:10px 20px; background:rgba(248,81,73,.1); color:var(--red); border:1px solid rgba(248,81,73,.3); border-radius:8px; font-size:14px; cursor:pointer; transition:all .2s; }
+.btn-danger:hover { background:rgba(248,81,73,.2); }
+.quiz-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.quiz-progress { font-size:14px; color:var(--text2); }
+.quiz-timer { font-family:var(--mono); font-size:20px; color:var(--accent); font-weight:700; background:var(--bg3); padding:4px 14px; border-radius:8px; }
+.progress-bar { width:100%; height:6px; background:var(--bg3); border-radius:3px; margin-bottom:24px; overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,var(--accent2),var(--accent)); border-radius:3px; transition:width .3s ease; }
+.q-type { display:inline-block; padding:4px 12px; background:rgba(88,166,255,.1); color:var(--accent); border-radius:20px; font-size:12px; font-weight:600; margin-bottom:16px; letter-spacing:.5px; }
+.q-text { font-size:17px; margin-bottom:8px; line-height:1.6; white-space:pre-line; }
+.q-value { font-family:var(--mono); font-size:22px; font-weight:700; color:var(--yellow); padding:16px 0; overflow-wrap:break-word; white-space:pre-wrap; line-height:1.5; }
+.q-hint { font-size:12px; color:var(--text2); margin-bottom:16px; }
+.q-hint code { background:var(--bg3); padding:2px 6px; border-radius:4px; font-family:var(--mono); }
+.answer-input { width:100%; padding:14px 16px; background:var(--bg); border:2px solid var(--border); border-radius:8px; color:var(--text); font-family:var(--mono); font-size:18px; outline:none; transition:border-color .2s; }
+.answer-input:focus { border-color:var(--accent); }
+.quiz-actions { display:flex; gap:8px; margin-top:16px; }
+.quiz-actions .btn-primary { margin-top:0; }
+.results-header { text-align:center; padding:24px 0; }
+.results-score { font-size:48px; font-weight:800; margin-bottom:8px; }
+.results-score.perfect { color:var(--green); }
+.results-score.partial { color:var(--yellow); }
+.results-time { font-size:16px; color:var(--text2); }
+.results-badge { display:inline-block; padding:6px 16px; border-radius:20px; font-size:13px; font-weight:600; margin-top:12px; }
+.badge-perfect { background:rgba(63,185,80,.15); color:var(--green); }
+.badge-saved { background:rgba(88,166,255,.15); color:var(--accent); margin-left:8px; }
+.wrong-list { margin-top:20px; }
+.wrong-item { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:8px; }
+.wrong-item .q-num { color:var(--text2); font-size:12px; margin-bottom:4px; }
+.wrong-item .q-question { font-size:14px; margin-bottom:8px; color:var(--text); white-space:pre-line; }
+.wrong-item .answer-row { display:flex; gap:16px; font-family:var(--mono); font-size:13px; flex-wrap:wrap; }
+.wrong-item .your-ans { color:var(--red); }
+.wrong-item .correct-ans { color:var(--green); }
+.wrong-item .answer-label { color:var(--text2); font-family:inherit; }
+.results-actions { display:flex; gap:12px; margin-top:24px; justify-content:center; }
+.history-table { width:100%; border-collapse:collapse; font-size:14px; }
+.history-table th { text-align:left; padding:10px 12px; color:var(--text2); border-bottom:1px solid var(--border); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+.history-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
+.history-table tr:hover td { background:var(--bg3); }
+.history-table .time-cell { font-family:var(--mono); color:var(--accent); }
+.history-table .score-cell { color:var(--green); font-weight:600; }
+.history-empty { text-align:center; padding:40px; color:var(--text2); }
+.history-footer { margin-top:16px; display:flex; justify-content:flex-end; }
+.screen { display:none; } .screen.active { display:block; }
+@media(max-width:600px){ #app{padding:12px;} .options-grid{grid-template-columns:1fr;} .q-value{font-size:18px;} .answer-input{font-size:16px;} .results-score{font-size:36px;} }
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.perfect-anim{animation:pulse .6s ease 3;}
+</style>
+</head>
+<body>
+<div id="app">
+    <nav id="nav">
+        <button class="active" onclick="showScreen('home')">⚡ Practice</button>
+        <button onclick="showScreen('history')">📊 History</button>
+    </nav>
+    <div id="screen-home" class="screen active">
+        <div class="title"><h1>MIPS 32-bit Practice</h1><p>Computer Architecture — Number Conversions & Assembly Encoding</p></div>
+        <div class="card"><h2>📋 Select Question Types</h2><div class="options-grid" id="category-grid"></div></div>
+        <div class="card"><h2>🔢 Number of Questions</h2><div class="count-grid" id="count-grid"></div></div>
+        <button class="btn-primary" onclick="startQuiz()">Start ▶</button>
+    </div>
+    <div id="screen-quiz" class="screen">
+        <div class="quiz-header"><span class="quiz-progress" id="quiz-progress"></span><span class="quiz-timer" id="quiz-timer">00:00</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="quiz-bar"></div></div>
+        <div class="card">
+            <span class="q-type" id="q-type"></span>
+            <div class="q-text" id="q-text"></div>
+            <div class="q-value" id="q-value"></div>
+            <div class="q-hint" id="q-hint"></div>
+            <input type="text" class="answer-input" id="answer-input" autocomplete="off" placeholder="Enter your answer..." onkeydown="if(event.key==='Enter')submitAnswer()">
+            <div class="quiz-actions"><button class="btn-primary" onclick="submitAnswer()">Next →</button></div>
+        </div>
+    </div>
+    <div id="screen-results" class="screen"><div class="card" id="results-card"></div></div>
+    <div id="screen-history" class="screen">
+        <div class="title"><h1>📊 Practice History</h1><p>Only perfect scores are saved</p></div>
+        <div class="card" id="history-card"></div>
+    </div>
+</div>
+<script>
+// ============================================================
+//  CONSTANTS
+// ============================================================
+const REG_NAME_TO_NUM={'$zero':0,'$at':1,'$v0':2,'$v1':3,'$a0':4,'$a1':5,'$a2':6,'$a3':7,'$t0':8,'$t1':9,'$t2':10,'$t3':11,'$t4':12,'$t5':13,'$t6':14,'$t7':15,'$s0':16,'$s1':17,'$s2':18,'$s3':19,'$s4':20,'$s5':21,'$s6':22,'$s7':23,'$t8':24,'$t9':25,'$k0':26,'$k1':27,'$gp':28,'$sp':29,'$fp':30,'$ra':31};
+const REG_NUM_TO_NAME={};for(const[k,v]of Object.entries(REG_NAME_TO_NUM))REG_NUM_TO_NAME[v]=k;
+const GP_REGS=[4,5,8,9,10,11,16,17,18,19];
+const R_INSTRUCTIONS={'add':{funct:0x20,fmt:'arith'},'sub':{funct:0x22,fmt:'arith'},'and':{funct:0x24,fmt:'arith'},'or':{funct:0x25,fmt:'arith'},'slt':{funct:0x2A,fmt:'arith'},'sll':{funct:0x00,fmt:'shift'},'srl':{funct:0x02,fmt:'shift'},'jr':{funct:0x08,fmt:'jr'}};
+const I_INSTRUCTIONS={'addi':{opcode:0x08,fmt:'arith'},'andi':{opcode:0x0C,fmt:'logic'},'ori':{opcode:0x0D,fmt:'logic'},'slti':{opcode:0x0A,fmt:'arith'},'lw':{opcode:0x23,fmt:'mem'},'sw':{opcode:0x2B,fmt:'mem'},'beq':{opcode:0x04,fmt:'branch'},'bne':{opcode:0x05,fmt:'branch'},'lui':{opcode:0x0F,fmt:'lui'}};
+const J_INSTRUCTIONS={'j':{opcode:0x02},'jal':{opcode:0x03}};
+const FUNCT_TO_NAME={};for(const[k,v]of Object.entries(R_INSTRUCTIONS))FUNCT_TO_NAME[v.funct]=k;
+const OPCODE_TO_INAME={};for(const[k,v]of Object.entries(I_INSTRUCTIONS))OPCODE_TO_INAME[v.opcode]=k;
+
+const CATEGORIES=[
+    {id:'int_signed_bin',  name:'Integer → Signed Binary'},
+    {id:'int_unsigned_bin',name:'Integer → Unsigned Binary'},
+    {id:'signed_bin_int',  name:'Signed Binary → Integer'},
+    {id:'unsigned_bin_int',name:'Unsigned Binary → Integer'},
+    {id:'int_hex',         name:'Integer → Hex'},
+    {id:'hex_int',         name:'Hex → Integer'},
+    {id:'bin_hex',         name:'Binary → Hex'},
+    {id:'hex_bin',         name:'Hex → Binary'},
+    {id:'asm_machine',     name:'Assembly → Machine Code'},
+    {id:'machine_asm',     name:'Machine Code → Assembly'},
+    {id:'identify_type',   name:'Identify Instruction Type'},
+    {id:'fields_to_asm',   name:'MIPS Fields → Assembly'},
+    {id:'eval_regs',       name:'Evaluate Register Sequence'},
+    {id:'overflow',        name:'Overflow Detection'},
+];
+const COUNTS=[10,20,30,40,50];
+
+// ============================================================
+//  UTILITIES
+// ============================================================
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function pick(a){return a[rand(0,a.length-1)];}
+function pickReg(){return pick(GP_REGS);}
+function pickTwoRegs(){let a=pickReg(),b=pickReg();while(b===a)b=pickReg();return[a,b];}
+function pickThreeRegs(){let a=pickReg(),b=pickReg(),c=pickReg();while(b===a)b=pickReg();while(c===a||c===b)c=pickReg();return[a,b,c];}
+function regName(n){return REG_NUM_TO_NAME[n]||('$'+n);}
+function regToNum(s){s=s.toLowerCase();if(REG_NAME_TO_NUM[s]!==undefined)return REG_NAME_TO_NUM[s];const m=s.match(/^\$(\d+)$/);return m?parseInt(m[1]):0;}
+function toU32(n){return n>>>0;}
+function intToHex32(n){return'0x'+toU32(n).toString(16).toUpperCase().padStart(8,'0');}
+function hex32ToSigned(h){let v=parseInt(h.replace(/^0x/i,''),16);return v>0x7FFFFFFF?v-0x100000000:v;}
+function intToMinSignedBin(n){
+    if(n===0)return'0';if(n>0)return'0'+n.toString(2);
+    const f=toU32(n).toString(2).padStart(32,'1'),z=f.indexOf('0');
+    return z===-1?'11':f.substring(z-1);
+}
+function intToMinUnsignedBin(n){return n===0?'0':toU32(n).toString(2);}
+function parseBinSigned(b){if(!b.length)return NaN;let v=parseInt(b.padStart(32,b[0]),2);return v>0x7FFFFFFF?v-0x100000000:v;}
+function parseBinUnsigned(b){return parseInt(b,2);}
+function fmtBin(b){let r='';for(let i=b.length-1,c=0;i>=0;i--,c++){if(c>0&&c%4===0)r=' '+r;r=b[i]+r;}return r;}
+function pad(s,n){return s+' '.repeat(Math.max(0,n-s.length));}
+
+function genSignedInt(){
+    const d=Math.random();
+    if(d<.25)return rand(-127,127);if(d<.50)return rand(-32768,32767);
+    if(d<.75)return rand(-1000000,1000000);if(d<.90)return rand(-100000000,100000000);
+    return pick([0,-1,1,255,-255,65535,-65536,2147483647,-2147483648,-128,127,256,-256]);
+}
+function genUnsignedInt(){
+    const d=Math.random();
+    if(d<.20)return rand(0,255);if(d<.40)return rand(0,65535);
+    if(d<.60)return rand(0,16777215);if(d<.80)return rand(0,2147483647);
+    if(d<.92)return((rand(0,0xFFFF)<<16)|rand(0,0xFFFF))>>>0;
+    return pick([0,1,255,256,65535,65536,2147483647,4294967295,0x80000000,0xDEADBEEF]);
+}
+function pickHexVal(){
+    return pick([0xAAAAAAAA,0x55555555,0x12345678,0xDEADBEEF,0xFF00FF00,0x0F0F0F0F,
+        0xF0F0F0F0,0x00FF00FF,0x80000000,0x7FFFFFFF,0xFFFFFFFF,0x01234567,
+        0xFEDCBA98,0x11111111,0x22222222,0x33333333,0x88888888,0xCCCCCCCC,0x13579BDF,0x2468ACE0]);
+}
+
+// ============================================================
+//  MIPS ENCODING / DECODING
+// ============================================================
+function encodeR(rs,rt,rd,sh,fn){return((rs<<21)|(rt<<16)|(rd<<11)|(sh<<6)|fn)>>>0;}
+function encodeI(op,rs,rt,im){return((op<<26)|(rs<<21)|(rt<<16)|(im&0xFFFF))>>>0;}
+function encodeJ(op,ad){return((op<<26)|(ad&0x03FFFFFF))>>>0;}
+function decodeMC(c){
+    const op=(c>>>26)&0x3F;
+    if(op===0)return{type:'R',rs:(c>>>21)&0x1F,rt:(c>>>16)&0x1F,rd:(c>>>11)&0x1F,shamt:(c>>>6)&0x1F,funct:c&0x3F};
+    if(op===2||op===3)return{type:'J',opcode:op,addr:c&0x03FFFFFF};
+    return{type:'I',opcode:op,rs:(c>>>21)&0x1F,rt:(c>>>16)&0x1F,imm:c&0xFFFF};
+}
+
+function genInstruction(){
+    const cat=pick(['r_arith','r_arith','r_shift','r_jr','i_arith','i_arith','i_logic','i_mem','i_branch','i_lui','j_type']);
+    switch(cat){
+        case'r_arith':{const op=pick(['add','sub','and','or','slt']);const[rd,rs,rt]=pickThreeRegs();return{asm:`${op} ${regName(rd)}, ${regName(rs)}, ${regName(rt)}`,machine:encodeR(rs,rt,rd,0,R_INSTRUCTIONS[op].funct)};}
+        case'r_shift':{const op=pick(['sll','srl']);const[rd,rt]=pickTwoRegs();const sh=rand(1,16);return{asm:`${op} ${regName(rd)}, ${regName(rt)}, ${sh}`,machine:encodeR(0,rt,rd,sh,R_INSTRUCTIONS[op].funct)};}
+        case'r_jr':{const rs=pick([31,31,31,pickReg()]);return{asm:`jr ${regName(rs)}`,machine:encodeR(rs,0,0,0,0x08)};}
+        case'i_arith':{const op=pick(['addi','slti']);const[rt,rs]=pickTwoRegs();const im=rand(-50,50);return{asm:`${op} ${regName(rt)}, ${regName(rs)}, ${im}`,machine:encodeI(I_INSTRUCTIONS[op].opcode,rs,rt,im&0xFFFF)};}
+        case'i_logic':{const op=pick(['andi','ori']);const[rt,rs]=pickTwoRegs();const im=rand(0,0xFF);const hx='0x'+im.toString(16).toUpperCase().padStart(4,'0');return{asm:`${op} ${regName(rt)}, ${regName(rs)}, ${hx}`,machine:encodeI(I_INSTRUCTIONS[op].opcode,rs,rt,im)};}
+        case'i_mem':{const op=pick(['lw','sw']);const rt=pickReg();const rs=pick([29,30,28,pickReg()]);const off=rand(0,50)*4;return{asm:`${op} ${regName(rt)}, ${off}(${regName(rs)})`,machine:encodeI(I_INSTRUCTIONS[op].opcode,rs,rt,off&0xFFFF)};}
+        case'i_branch':{const op=pick(['beq','bne']);const[rs,rt]=pickTwoRegs();const im=rand(1,0xFF);const hx='0x'+im.toString(16).toUpperCase().padStart(4,'0');return{asm:`${op} ${regName(rs)}, ${regName(rt)}, ${hx}`,machine:encodeI(I_INSTRUCTIONS[op].opcode,rs,rt,im)};}
+        case'i_lui':{const rt=pickReg();const im=rand(1,0xFFFF);const hx='0x'+im.toString(16).toUpperCase().padStart(4,'0');return{asm:`lui ${regName(rt)}, ${hx}`,machine:encodeI(0x0F,0,rt,im)};}
+        case'j_type':{const op=pick(['j','jal']);const ad=0x00400000+rand(0,0x3FFF)*4;const t26=(ad>>>2)&0x03FFFFFF;const hx='0x'+ad.toString(16).toUpperCase().padStart(8,'0');return{asm:`${op} ${hx}`,machine:encodeJ(J_INSTRUCTIONS[op].opcode,t26)};}
+    }
+}
+
+function machineToAsm(c){
+    const d=decodeMC(c);
+    if(d.type==='R'){const n=FUNCT_TO_NAME[d.funct];if(!n)return null;const i=R_INSTRUCTIONS[n];if(i.fmt==='arith')return`${n} ${regName(d.rd)}, ${regName(d.rs)}, ${regName(d.rt)}`;if(i.fmt==='shift')return`${n} ${regName(d.rd)}, ${regName(d.rt)}, ${d.shamt}`;if(i.fmt==='jr')return`jr ${regName(d.rs)}`;}
+    else if(d.type==='J'){const n=d.opcode===2?'j':'jal';const a=(d.addr<<2)>>>0;return`${n} 0x${a.toString(16).toUpperCase().padStart(8,'0')}`;}
+    else{const n=OPCODE_TO_INAME[d.opcode];if(!n)return null;const i=I_INSTRUCTIONS[n];let im=d.imm;
+        if(i.fmt==='arith'){if(im>0x7FFF)im-=0x10000;return`${n} ${regName(d.rt)}, ${regName(d.rs)}, ${im}`;}
+        if(i.fmt==='logic')return`${n} ${regName(d.rt)}, ${regName(d.rs)}, 0x${d.imm.toString(16).toUpperCase().padStart(4,'0')}`;
+        if(i.fmt==='mem'){if(im>0x7FFF)im-=0x10000;return`${n} ${regName(d.rt)}, ${im}(${regName(d.rs)})`;}
+        if(i.fmt==='branch')return`${n} ${regName(d.rs)}, ${regName(d.rt)}, 0x${d.imm.toString(16).toUpperCase().padStart(4,'0')}`;
+        if(i.fmt==='lui')return`lui ${regName(d.rt)}, 0x${d.imm.toString(16).toUpperCase().padStart(4,'0')}`;
+    }return null;
+}
+
+// ============================================================
+//  INSTRUCTION SIMULATOR
+// ============================================================
+function simulate(namedRegs,instructions,targetName){
+    const regs=new Array(32).fill(0);
+    for(const[name,val]of Object.entries(namedRegs)){const n=regToNum(name);if(n>0)regs[n]=val>>>0;}
+    for(const instr of instructions){execInstr(regs,instr);regs[0]=0;}
+    return regs[regToNum(targetName)];
+}
+
+function execInstr(regs,instrStr){
+    let s=instrStr.trim().toLowerCase(),m;
+    // R-arith: op rd, rs, rt
+    if(m=s.match(/^(add|sub|and|or|slt)\s+(\$\w+)\s*,\s*(\$\w+)\s*,\s*(\$\w+)$/)){
+        const rd=regToNum(m[2]),a=regs[regToNum(m[3])],b=regs[regToNum(m[4])];
+        switch(m[1]){
+            case'add':regs[rd]=(a+b)>>>0;break;case'sub':regs[rd]=(a-b)>>>0;break;
+            case'and':regs[rd]=(a&b)>>>0;break;case'or':regs[rd]=(a|b)>>>0;break;
+            case'slt':{const sa=a>0x7FFFFFFF?a-4294967296:a,sb=b>0x7FFFFFFF?b-4294967296:b;regs[rd]=sa<sb?1:0;break;}
+        }return;
+    }
+    // R-shift: op rd, rt, shamt
+    if(m=s.match(/^(sll|srl)\s+(\$\w+)\s*,\s*(\$\w+)\s*,\s*(\d+)$/)){
+        const rd=regToNum(m[2]),v=regs[regToNum(m[3])],sh=parseInt(m[4]);
+        regs[rd]=m[1]==='sll'?(v<<sh)>>>0:v>>>sh;return;
+    }
+    // addi/slti rt, rs, decimal
+    if(m=s.match(/^(addi|slti)\s+(\$\w+)\s*,\s*(\$\w+)\s*,\s*(-?\d+)$/)){
+        const rt=regToNum(m[2]),a=regs[regToNum(m[3])],im=parseInt(m[4]);
+        if(m[1]==='addi')regs[rt]=(a+im)>>>0;
+        else{const sa=a>0x7FFFFFFF?a-4294967296:a;regs[rt]=sa<im?1:0;}return;
+    }
+    // andi/ori rt, rs, 0xHEX
+    if(m=s.match(/^(andi|ori)\s+(\$\w+)\s*,\s*(\$\w+)\s*,\s*0x([0-9a-f]+)$/i)){
+        const rt=regToNum(m[2]),a=regs[regToNum(m[3])],im=parseInt(m[4],16)&0xFFFF;
+        regs[rt]=m[1]==='andi'?(a&im)>>>0:(a|im)>>>0;return;
+    }
+    // andi/ori rt, rs, decimal
+    if(m=s.match(/^(andi|ori)\s+(\$\w+)\s*,\s*(\$\w+)\s*,\s*(-?\d+)$/)){
+        const rt=regToNum(m[2]),a=regs[regToNum(m[3])],im=parseInt(m[4])&0xFFFF;
+        regs[rt]=m[1]==='andi'?(a&im)>>>0:(a|im)>>>0;return;
+    }
+    // lui rt, hex or decimal
+    if(m=s.match(/^lui\s+(\$\w+)\s*,\s*(?:0x([0-9a-f]+)|(\d+))$/i)){
+        const rt=regToNum(m[1]),im=m[2]?parseInt(m[2],16):parseInt(m[3]);
+        regs[rt]=((im&0xFFFF)<<16)>>>0;return;
+    }
+}
+
+// ============================================================
+//  EVAL TEMPLATES
+// ============================================================
+const EVAL_TEMPLATES=[
+    ()=>{const sh=rand(1,8);return{regs:{'$t0':pickHexVal(),'$t1':pickHexVal()},instrs:[`${pad('sll',5)}$t2, $t0, ${sh}`,`${pad('or',5)}$t2, $t2, $t1`],target:'$t2'};},
+    ()=>{const sh=rand(1,8);const mk=pick([0xFFFF,0xFF00,0x00FF,0xF0F0,0x0F0F,0xFFEF,0xFFF0]);return{regs:{'$t0':pickHexVal()},instrs:[`${pad('sll',5)}$t2, $t0, ${sh}`,`${pad('andi',5)}$t2, $t2, 0x${mk.toString(16).toUpperCase()}`],target:'$t2'};},
+    ()=>{const sh=rand(1,8);const mk=pick([0xFFFF,0xFFEF,0x00FF,0x001F,0x003F,0x0FFF]);return{regs:{'$t0':pickHexVal()},instrs:[`${pad('srl',5)}$t2, $t0, ${sh}`,`${pad('andi',5)}$t2, $t2, 0x${mk.toString(16).toUpperCase()}`],target:'$t2'};},
+    ()=>{const sh=rand(1,4);return{regs:{'$t0':pickHexVal(),'$t1':pickHexVal()},instrs:[`${pad('add',5)}$t2, $t0, $t1`,`${pad('sll',5)}$t2, $t2, ${sh}`],target:'$t2'};},
+    ()=>({regs:{'$t0':pickHexVal(),'$t1':pickHexVal()},instrs:[`${pad('sub',5)}$t2, $t0, $t1`,`${pad('and',5)}$t2, $t2, $t1`],target:'$t2'}),
+    ()=>({regs:{'$t0':pickHexVal(),'$t1':pickHexVal()},instrs:[`${pad('add',5)}$t2, $t0, $t1`,`${pad('add',5)}$t2, $t2, $t0`],target:'$t2'}),
+    ()=>{const m1=pick([0xFF00,0x00FF,0xF0F0,0xFFFF]);const m2=pick([0x00FF,0xFF00,0x0F0F,0xFFF0,0xFFEF]);return{regs:{'$t0':pickHexVal()},instrs:[`${pad('ori',5)}$t2, $t0, 0x${m1.toString(16).toUpperCase()}`,`${pad('andi',5)}$t2, $t2, 0x${m2.toString(16).toUpperCase()}`],target:'$t2'};},
+    ()=>{const sh=rand(1,4);return{regs:{'$t0':pickHexVal(),'$t1':pickHexVal()},instrs:[`${pad('sll',5)}$t2, $t0, ${sh}`,`${pad('add',5)}$t2, $t2, $t1`],target:'$t2'};},
+    ()=>({regs:{'$t0':pickHexVal(),'$t1':pickHexVal()},instrs:[`${pad('and',5)}$t2, $t0, $t1`,`${pad('or',5)}$t2, $t2, $t0`],target:'$t2'}),
+    ()=>{const sh=rand(1,8);return{regs:{'$t0':pickHexVal(),'$t1':pickHexVal()},instrs:[`${pad('srl',5)}$t2, $t0, ${sh}`,`${pad('or',5)}$t2, $t2, $t1`],target:'$t2'};},
+];
+
+// ============================================================
+//  OVERFLOW GENERATION
+// ============================================================
+function genOverflowData(){
+    const op=pick(['add','sub']);const want=Math.random()<0.45;let v1,v2;
+    if(op==='add'){
+        if(want){
+            if(Math.random()<0.5){v1=(0x40000000+rand(0,0x3FFFFFFF))>>>0;v2=(0x40000000+rand(0,0x3FFFFFFF))>>>0;}
+            else{v1=(0x80000000+rand(0,0x3FFFFFFF))>>>0;v2=(0x80000000+rand(0,0x3FFFFFFF))>>>0;}
+        }else{
+            if(Math.random()<0.33){v1=rand(0,0x7FFFFFFF)>>>0;v2=(0x80000000+rand(0,0x7FFFFFFF))>>>0;}
+            else if(Math.random()<0.5){v1=rand(0,0x3FFFFFFF)>>>0;v2=rand(0,0x3FFFFFFF)>>>0;}
+            else{v1=(0xC0000000+rand(0,0x3FFFFFFF))>>>0;v2=(0xC0000000+rand(0,0x3FFFFFFF))>>>0;}
+        }
+    }else{
+        if(want){
+            if(Math.random()<0.5){v1=(0x40000000+rand(0,0x3FFFFFFF))>>>0;v2=(0x80000000+rand(0,0x3FFFFFFF))>>>0;}
+            else{v1=(0x80000000+rand(0,0x3FFFFFFF))>>>0;v2=(0x40000000+rand(0,0x3FFFFFFF))>>>0;}
+        }else{
+            if(Math.random()<0.5){v1=rand(0,0x7FFFFFFF)>>>0;v2=rand(0,0x7FFFFFFF)>>>0;}
+            else{v1=(0x80000000+rand(0,0x7FFFFFFF))>>>0;v2=(0x80000000+rand(0,0x7FFFFFFF))>>>0;}
+        }
+    }
+    v1=v1>>>0;v2=v2>>>0;
+    const result=op==='add'?(v1+v2)>>>0:(v1-v2)>>>0;
+    const s1=v1>>>31,s2=v2>>>31,sr=result>>>31;
+    const overflow=op==='add'?(s1===s2)&&(s1!==sr):(s1!==s2)&&(sr!==s1);
+    return{v1,v2,op,result,overflow};
+}
+
+// ============================================================
+//  QUESTION GENERATORS
+// ============================================================
+function generateQuestion(catId){
+    switch(catId){
+        case'int_signed_bin':{const n=genSignedInt();const a=intToMinSignedBin(n);return{type:'Integer → Signed Binary',text:'Convert the integer to signed binary (two\'s complement, minimum bits):',value:n.toString(),hint:'Answer: binary digits, e.g. <code>0101010</code> or <code>1011</code>',answer:a,answerDisplay:fmtBin(a),catId};}
+        case'int_unsigned_bin':{const n=genUnsignedInt();const a=intToMinUnsignedBin(n);return{type:'Integer → Unsigned Binary',text:'Convert the integer to unsigned binary (minimum bits):',value:n.toString(),hint:'Answer: binary digits, e.g. <code>101010</code>',answer:a,answerDisplay:fmtBin(a),catId};}
+        case'signed_bin_int':{const n=genSignedInt();const b=intToMinSignedBin(n);return{type:'Signed Binary → Integer',text:'Convert the signed binary (two\'s complement) to an integer:',value:fmtBin(b),hint:'Answer: a signed integer, e.g. <code>-42</code>',answer:n.toString(),answerDisplay:n.toString(),catId};}
+        case'unsigned_bin_int':{const n=genUnsignedInt();const b=intToMinUnsignedBin(n);return{type:'Unsigned Binary → Integer',text:'Convert the unsigned binary to an integer:',value:fmtBin(b),hint:'Answer: a non-negative integer, e.g. <code>42</code>',answer:n.toString(),answerDisplay:n.toString(),catId};}
+        case'int_hex':{const n=genSignedInt();return{type:'Integer → Hex (32-bit)',text:'Convert the signed integer to 32-bit hexadecimal:',value:n.toString(),hint:'Answer: <code>0xXXXXXXXX</code>, e.g. <code>0xFFFFFFD6</code>',answer:intToHex32(n),answerDisplay:intToHex32(n),catId};}
+        case'hex_int':{const n=genSignedInt();const h=intToHex32(n);return{type:'Hex → Integer',text:'Convert the 32-bit hex to a signed integer:',value:h,hint:'Answer: a signed integer, e.g. <code>-42</code>',answer:n.toString(),answerDisplay:n.toString(),catId};}
+        case'bin_hex':{const n=genUnsignedInt();const b=intToMinUnsignedBin(n);return{type:'Binary → Hex (32-bit)',text:'Convert the unsigned binary to 32-bit hexadecimal:',value:fmtBin(b),hint:'Answer: <code>0xXXXXXXXX</code>',answer:intToHex32(n),answerDisplay:intToHex32(n),catId};}
+        case'hex_bin':{const n=genUnsignedInt();const h=intToHex32(n);const b=intToMinUnsignedBin(n);return{type:'Hex → Binary',text:'Convert the 32-bit hex to unsigned binary (minimum bits):',value:h,hint:'Answer: binary digits, e.g. <code>101010</code>',answer:b,answerDisplay:fmtBin(b),catId};}
+        case'asm_machine':{const i=genInstruction();return{type:'Assembly → Machine Code',text:'Convert the assembly instruction to 32-bit machine code (hex):',value:i.asm,hint:'Answer: <code>0xXXXXXXXX</code>',answer:intToHex32(i.machine),answerDisplay:intToHex32(i.machine),catId};}
+        case'machine_asm':{const i=genInstruction();return{type:'Machine Code → Assembly',text:'Convert the machine code to a MIPS assembly instruction:',value:intToHex32(i.machine),hint:'Answer: assembly, e.g. <code>add $t0, $s1, $s2</code>',answer:i.asm,answerDisplay:i.asm,catId};}
+        case'identify_type':{
+            const i=genInstruction();const mc=i.machine;const op=(mc>>>26)&0x3F;
+            const tp=op===0?'R':(op===2||op===3)?'J':'I';
+            return{type:'Identify Instruction Type',text:'What is the instruction type (R, I, or J) of this machine code?',value:intToHex32(mc),hint:'Answer: <code>R</code>, <code>I</code>, or <code>J</code>',answer:tp,answerDisplay:tp+'-type',catId};
+        }
+        case'fields_to_asm':{
+            const i=genInstruction();const d=decodeMC(i.machine);
+            const hx=Math.random()<0.5;
+            const fv=(n)=>hx?'0x'+n.toString(16).toUpperCase():n.toString();
+            let fs;
+            if(d.type==='R')fs=`op = 0, rs = ${d.rs}, rt = ${d.rt}, rd = ${d.rd}, shamt = ${d.shamt}, funct = ${fv(d.funct)}`;
+            else if(d.type==='I')fs=`op = ${fv(d.opcode)}, rs = ${d.rs}, rt = ${d.rt}, const = ${fv(d.imm)}`;
+            else fs=`op = ${fv(d.opcode)}, addr = 0x${d.addr.toString(16).toUpperCase()}`;
+            return{type:'MIPS Fields → Assembly',text:'Write the MIPS assembly instruction for these fields:',value:fs,hint:'Answer: assembly, e.g. <code>add $t0, $s1, $s2</code>',answer:i.asm,answerDisplay:i.asm,catId};
+        }
+        case'eval_regs':{
+            const tmpl=pick(EVAL_TEMPLATES)();
+            const result=simulate(tmpl.regs,tmpl.instrs,tmpl.target);
+            const ans=intToHex32(result);
+            const regsStr=Object.entries(tmpl.regs).map(([k,v])=>`${k} = ${intToHex32(v)}`).join(', ');
+            return{type:'Evaluate Register Sequence',text:`Given: ${regsStr}\nWhat is the value of ${tmpl.target} after executing:`,value:tmpl.instrs.join('\n'),hint:'Answer: <code>0xXXXXXXXX</code>',answer:ans,answerDisplay:ans,catId};
+        }
+        case'overflow':{
+            const d=genOverflowData();
+            const sRegs=['$s0','$s1','$s2','$s3','$s4','$s5','$s6','$s7'];
+            const rs=pick(sRegs);let rt=pick(sRegs);while(rt===rs)rt=pick(sRegs);
+            const ans=`${intToHex32(d.result)}, ${d.overflow?'yes':'no'}`;
+            return{type:'Overflow Detection',text:`Given: ${rs} = ${intToHex32(d.v1)}, ${rt} = ${intToHex32(d.v2)}\nCompute the result and determine if overflow occurs:`,value:`${d.op} $t0, ${rs}, ${rt}`,hint:'Answer: <code>0xXXXXXXXX, yes</code> or <code>0xXXXXXXXX, no</code>',answer:ans,answerDisplay:ans,catId};
+        }
+    }
+}
+
+// ============================================================
+//  ANSWER VALIDATION
+// ============================================================
+function parseAsm(s){
+    s=s.trim().toLowerCase();s=s.replace(/\$(\d+)/g,(_,n)=>REG_NUM_TO_NAME[parseInt(n)]||('$'+n));
+    s=s.replace(/\s+/g,' ').replace(/\s*,\s*/g,',').replace(/\s*\(\s*/g,'(').replace(/\s*\)\s*/g,')');
+    let m;
+    if(m=s.match(/^(add|sub|and|or|slt)\s+(\$\w+),(\$\w+),(\$\w+)$/))return{op:m[1],rd:m[2],rs:m[3],rt:m[4]};
+    if(m=s.match(/^(sll|srl)\s+(\$\w+),(\$\w+),(\d+)$/))return{op:m[1],rd:m[2],rt:m[3],shamt:parseInt(m[4])};
+    if(m=s.match(/^jr\s+(\$\w+)$/))return{op:'jr',rs:m[1]};
+    if(m=s.match(/^(addi|slti)\s+(\$\w+),(\$\w+),(-?\d+)$/))return{op:m[1],rt:m[2],rs:m[3],imm:parseInt(m[4])};
+    if(m=s.match(/^(addi|slti)\s+(\$\w+),(\$\w+),(-?)0x([0-9a-f]+)$/))return{op:m[1],rt:m[2],rs:m[3],imm:(m[4]==='-'?-1:1)*parseInt(m[5],16)};
+    if(m=s.match(/^(andi|ori)\s+(\$\w+),(\$\w+),0x([0-9a-f]+)$/))return{op:m[1],rt:m[2],rs:m[3],imm:parseInt(m[4],16)};
+    if(m=s.match(/^(andi|ori)\s+(\$\w+),(\$\w+),(\d+)$/))return{op:m[1],rt:m[2],rs:m[3],imm:parseInt(m[4])};
+    if(m=s.match(/^(lw|sw)\s+(\$\w+),(-?\d+)\((\$\w+)\)$/))return{op:m[1],rt:m[2],offset:parseInt(m[3]),rs:m[4]};
+    if(m=s.match(/^(beq|bne)\s+(\$\w+),(\$\w+),0x([0-9a-f]+)$/))return{op:m[1],rs:m[2],rt:m[3],imm:parseInt(m[4],16)};
+    if(m=s.match(/^(beq|bne)\s+(\$\w+),(\$\w+),(\d+)$/))return{op:m[1],rs:m[2],rt:m[3],imm:parseInt(m[4])};
+    if(m=s.match(/^lui\s+(\$\w+),0x([0-9a-f]+)$/))return{op:'lui',rt:m[1],imm:parseInt(m[2],16)};
+    if(m=s.match(/^lui\s+(\$\w+),(\d+)$/))return{op:'lui',rt:m[1],imm:parseInt(m[2])};
+    if(m=s.match(/^(j|jal)\s+0x([0-9a-f]+)$/))return{op:m[1],target:parseInt(m[2],16)};
+    if(m=s.match(/^(j|jal)\s+(\d+)$/))return{op:m[1],target:parseInt(m[2])};
+    return null;
+}
+
+function checkAnswer(q,ua){
+    ua=ua.trim();if(!ua)return false;
+    switch(q.catId){
+        case'int_signed_bin':{const c=ua.replace(/[\s_]/g,'').replace(/^0b/i,'');if(!/^[01]+$/.test(c))return false;return parseBinSigned(c)===parseInt(q.value);}
+        case'int_unsigned_bin':{const c=ua.replace(/[\s_]/g,'').replace(/^0b/i,'');if(!/^[01]+$/.test(c))return false;return parseBinUnsigned(c)===parseInt(q.value);}
+        case'signed_bin_int':case'unsigned_bin_int':case'hex_int':{const n=parseInt(ua);return!isNaN(n)&&n===parseInt(q.answer);}
+        case'int_hex':case'bin_hex':case'asm_machine':case'eval_regs':{const c=ua.replace(/^0x/i,'').toUpperCase().padStart(8,'0');return c===q.answer.replace(/^0x/i,'').toUpperCase();}
+        case'hex_bin':{const c=ua.replace(/[\s_]/g,'').replace(/^0b/i,'');if(!/^[01]+$/.test(c))return false;return parseBinUnsigned(c)===parseBinUnsigned(q.answer);}
+        case'machine_asm':case'fields_to_asm':{const u=parseAsm(ua),e=parseAsm(q.answer);return u&&e&&JSON.stringify(u)===JSON.stringify(e);}
+        case'identify_type':return ua.trim().toUpperCase()===q.answer;
+        case'overflow':{
+            const pts=ua.split(',').map(s=>s.trim());if(pts.length!==2)return false;
+            const uh=pts[0].replace(/^0x/i,'').toUpperCase().padStart(8,'0');
+            const uo=pts[1].toLowerCase();
+            const ep=q.answer.split(',').map(s=>s.trim());
+            return uh===ep[0].replace(/^0x/i,'').toUpperCase()&&uo===ep[1].toLowerCase();
+        }
+    }return false;
+}
+
+// ============================================================
+//  QUIZ ENGINE
+// ============================================================
+let quiz={questions:[],currentIdx:0,answers:[],startTime:null,timerInterval:null,selectedCats:[],totalQuestions:20};
+
+function startQuiz(){
+    if(quiz.selectedCats.length===0){alert('Select at least 1 question type!');return;}
+    quiz.questions=[];quiz.answers=[];quiz.currentIdx=0;
+    const cats=quiz.selectedCats,total=quiz.totalQuestions;
+    for(let i=0;i<total;i++)quiz.questions.push(generateQuestion(cats[i%cats.length]));
+    for(let i=quiz.questions.length-1;i>0;i--){const j=rand(0,i);[quiz.questions[i],quiz.questions[j]]=[quiz.questions[j],quiz.questions[i]];}
+    quiz.startTime=Date.now();quiz.timerInterval=setInterval(updateTimer,200);
+    showScreen('quiz');renderQuestion();
+}
+function updateTimer(){const s=Math.floor((Date.now()-quiz.startTime)/1000);document.getElementById('quiz-timer').textContent=Math.floor(s/60).toString().padStart(2,'0')+':'+(s%60).toString().padStart(2,'0');}
+function stopTimer(){clearInterval(quiz.timerInterval);return Math.floor((Date.now()-quiz.startTime)/1000);}
+function submitAnswer(){
+    const inp=document.getElementById('answer-input'),ua=inp.value.trim();if(!ua){inp.focus();return;}
+    quiz.answers.push({userAns:ua,correct:checkAnswer(quiz.questions[quiz.currentIdx],ua)});
+    quiz.currentIdx++;if(quiz.currentIdx>=quiz.questions.length)finishQuiz();else renderQuestion();
+}
+function finishQuiz(){
+    const elapsed=stopTimer(),total=quiz.questions.length,correct=quiz.answers.filter(a=>a.correct).length,perfect=correct===total;
+    if(perfect)saveToHistory({date:new Date().toISOString(),categories:quiz.selectedCats.map(c=>CATEGORIES.find(x=>x.id===c)?.name||c).join(', '),totalQuestions:total,timeSeconds:elapsed,score:`${correct}/${total}`});
+    renderResults(correct,total,elapsed,perfect);showScreen('results');
+}
+
+// ============================================================
+//  UI
+// ============================================================
+function showScreen(name){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById('screen-'+name).classList.add('active');
+    document.querySelectorAll('#nav button').forEach((b,i)=>b.classList.toggle('active',(i===0&&name!=='history')||(i===1&&name==='history')));
+    if(name==='history')renderHistory();
+}
+function initUI(){
+    const grid=document.getElementById('category-grid');
+    const allDiv=document.createElement('label');allDiv.className='option-item selected';
+    allDiv.innerHTML='<input type="checkbox" checked id="cat-all"> <strong>🎲 Mixed (All)</strong>';
+    allDiv.querySelector('input').addEventListener('change',function(){
+        document.querySelectorAll('.cat-item input').forEach(cb=>{cb.checked=!this.checked;cb.parentElement.classList.toggle('selected',!this.checked&&cb.checked);});
+        allDiv.classList.toggle('selected',this.checked);updateSelectedCats();
+    });grid.appendChild(allDiv);
+    CATEGORIES.forEach(cat=>{
+        const div=document.createElement('label');div.className='option-item cat-item';
+        div.innerHTML=`<input type="checkbox" value="${cat.id}"> ${cat.name}`;
+        div.querySelector('input').addEventListener('change',function(){
+            div.classList.toggle('selected',this.checked);
+            const ac=document.getElementById('cat-all');
+            if(this.checked){ac.checked=false;ac.parentElement.classList.remove('selected');}
+            if(!document.querySelectorAll('.cat-item input:checked').length){ac.checked=true;ac.parentElement.classList.add('selected');}
+            updateSelectedCats();
+        });grid.appendChild(div);
+    });
+    const cg=document.getElementById('count-grid');
+    COUNTS.forEach((c,i)=>{const b=document.createElement('button');b.className='count-btn'+(i===1?' selected':'');b.textContent=c;
+        b.addEventListener('click',()=>{cg.querySelectorAll('.count-btn').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');quiz.totalQuestions=c;});cg.appendChild(b);});
+    quiz.totalQuestions=20;updateSelectedCats();
+}
+function updateSelectedCats(){
+    quiz.selectedCats=document.getElementById('cat-all').checked?CATEGORIES.map(c=>c.id):[...document.querySelectorAll('.cat-item input:checked')].map(cb=>cb.value);
+}
+function renderQuestion(){
+    const q=quiz.questions[quiz.currentIdx],total=quiz.questions.length,idx=quiz.currentIdx;
+    document.getElementById('quiz-progress').textContent=`Question ${idx+1} / ${total}`;
+    document.getElementById('quiz-bar').style.width=`${(idx/total)*100}%`;
+    document.getElementById('q-type').textContent=q.type;
+    document.getElementById('q-text').textContent=q.text;
+    document.getElementById('q-value').textContent=q.value;
+    document.getElementById('q-hint').innerHTML=q.hint;
+    const inp=document.getElementById('answer-input');inp.value='';inp.className='answer-input';inp.focus();
+}
+function renderResults(correct,total,elapsed,perfect){
+    const mm=Math.floor(elapsed/60).toString().padStart(2,'0'),ss=(elapsed%60).toString().padStart(2,'0');
+    let h=`<div class="results-header"><div class="results-score ${perfect?'perfect':'partial'} ${perfect?'perfect-anim':''}">${correct}/${total}</div><div class="results-time">⏱ Time: ${mm}:${ss}</div>`;
+    if(perfect)h+=`<span class="results-badge badge-perfect">🎉 Perfect!</span><span class="results-badge badge-saved">💾 Saved</span>`;
+    h+=`</div>`;
+    const wrongs=[];quiz.questions.forEach((q,i)=>{if(!quiz.answers[i].correct)wrongs.push({q,a:quiz.answers[i],idx:i});});
+    if(wrongs.length){
+        h+=`<div class="wrong-list"><h3 style="color:var(--red);margin-bottom:12px">❌ Wrong Answers (${wrongs.length})</h3>`;
+        wrongs.forEach(w=>{
+            h+=`<div class="wrong-item"><div class="q-num">Question ${w.idx+1} — ${w.q.type}</div><div class="q-question">${escHtml(w.q.text)}\n${escHtml(w.q.value)}</div><div class="answer-row"><div><span class="answer-label">Your answer: </span><span class="your-ans">${escHtml(w.a.userAns)}</span></div><div><span class="answer-label">Correct: </span><span class="correct-ans">${escHtml(w.q.answerDisplay)}</span></div></div></div>`;
+        });h+=`</div>`;
+    }
+    h+=`<div class="results-actions"><button class="btn-secondary" onclick="showScreen('home')">🏠 Home</button><button class="btn-primary" style="width:auto;margin:0;padding:12px 28px" onclick="startQuiz()">🔄 Retry</button></div>`;
+    document.getElementById('results-card').innerHTML=h;
+}
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ============================================================
+//  LOCAL STORAGE
+// ============================================================
+const STORAGE_KEY='mips_practice_history';
+function getHistory(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||[];}catch{return[];}}
+function saveToHistory(e){const h=getHistory();h.unshift(e);if(h.length>100)h.length=100;localStorage.setItem(STORAGE_KEY,JSON.stringify(h));}
+function clearHistory(){if(confirm('Clear all history?')){localStorage.removeItem(STORAGE_KEY);renderHistory();}}
+function renderHistory(){
+    const card=document.getElementById('history-card'),hist=getHistory();
+    if(!hist.length){card.innerHTML='<div class="history-empty"><p style="font-size:48px;margin-bottom:12px">📭</p><p>No results yet.</p><p style="font-size:12px;margin-top:4px">Complete a perfect quiz to save!</p></div>';return;}
+    let h='<table class="history-table"><thead><tr><th>Date</th><th>Type</th><th>Questions</th><th>Time</th><th>Score</th></tr></thead><tbody>';
+    hist.forEach(r=>{const d=new Date(r.date);const ds=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+        const mm=Math.floor(r.timeSeconds/60).toString().padStart(2,'0'),ss=(r.timeSeconds%60).toString().padStart(2,'0');
+        const cats=r.categories.length>40?r.categories.substring(0,37)+'...':r.categories;
+        h+=`<tr><td>${ds}</td><td title="${escHtml(r.categories)}">${escHtml(cats)}</td><td>${r.totalQuestions}</td><td class="time-cell">${mm}:${ss}</td><td class="score-cell">${r.score} ✅</td></tr>`;
+    });h+='</tbody></table><div class="history-footer"><button class="btn-danger" onclick="clearHistory()">🗑 Clear History</button></div>';
+    card.innerHTML=h;
+}
+
+// ============================================================
+initUI();
+</script>
+</body>
+</html>
